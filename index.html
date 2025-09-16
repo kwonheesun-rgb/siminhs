@@ -60,9 +60,6 @@
         <!-- 메시지 영역 -->
         <div id="message-area" class="text-center mb-4 font-semibold"></div>
 
-        <!-- 현재 사용자 ID 표시 -->
-        <div id="user-id-display" class="text-sm text-gray-400 mb-4 text-center hidden"></div>
-
         <!-- 게시글 작성 버튼 -->
         <div class="text-center mb-8">
             <button id="show-form-button" class="bg-blue-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-600 transition-colors shadow-lg">
@@ -138,7 +135,6 @@
         const modalInput = document.getElementById('modal-password-input');
         const modalConfirmButton = document.getElementById('modal-confirm-button');
         const modalCancelButton = document.getElementById('modal-cancel-button');
-        const userIdDisplay = document.getElementById('user-id-display');
 
         // 메시지를 표시하는 함수
         const showMessage = (message, isError = false) => {
@@ -200,21 +196,14 @@
             const auth = getAuth(app);
             setLogLevel('debug'); // 디버그 로그 활성화
 
-            // 인증 상태가 변경될 때마다 실행될 리스너
+            // 익명 인증으로 로그인
             onAuthStateChanged(auth, async (user) => {
                 console.log("인증 상태 변경 감지. 현재 사용자:", user ? user.uid : "없음");
-
-                // 사용자 ID가 있고, Firebase가 준비되면
                 if (user) {
-                    const userId = user.uid;
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                     
-                    // 사용자 ID를 UI에 표시
-                    userIdDisplay.textContent = `사용자 ID: ${userId}`;
-                    userIdDisplay.classList.remove('hidden');
-
-                    // 현재 사용자의 private 게시글 컬렉션 경로를 사용
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; 
-                    const postsCollection = collection(db, `artifacts/${appId}/users/${userId}/posts`);
+                    // ✅ 이 부분이 수정되었습니다. 이제 모든 사용자가 접근할 수 있는 공개 경로를 사용합니다.
+                    const postsCollection = collection(db, `artifacts/${appId}/public/data/posts`);
 
                     // 게시글 작성 폼 제출 처리
                     postForm.addEventListener('submit', async (e) => {
@@ -261,7 +250,8 @@
                         const ADMIN_PASSWORD = '4980';
                         if (inputPassword === window.currentPostPassword || inputPassword === ADMIN_PASSWORD) {
                             try {
-                                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/posts`, window.currentPostIdToDelete));
+                                // ✅ 이 부분이 수정되었습니다. 이제 공개 경로에서 게시글을 삭제합니다.
+                                await deleteDoc(doc(db, `artifacts/${appId}/public/data/posts`, window.currentPostIdToDelete));
                                 showMessage("게시글이 성공적으로 삭제되었습니다.");
                                 modalInput.value = '';
                                 passwordModal.classList.add('hidden');
@@ -283,12 +273,10 @@
 
                     // 실시간 데이터 리스너 설정
                     setupRealtimeListener(postsCollection);
-
                 } else {
                     // 사용자 ID가 없으면 익명 로그인 시도
                     console.log("인증된 사용자 없음, 익명 로그인 시도 중...");
                     try {
-                        // __initial_auth_token이 있으면 맞춤 토큰 로그인 시도, 없으면 익명 로그인
                         if (typeof __initial_auth_token !== 'undefined') {
                             await signInWithCustomToken(auth, __initial_auth_token);
                         } else {
@@ -311,7 +299,7 @@
                 onSnapshot(q, (snapshot) => {
                     console.log("Firestore 스냅샷 수신, 문서 개수:", snapshot.size);
                     
-                    postsContainer.innerHTML = ''; // 기존 콘텐츠를 비웁니다.
+                    postsContainer.innerHTML = '';
                     
                     if (snapshot.empty) {
                         postsContainer.innerHTML = '<p class="text-center text-gray-500 text-lg">아직 게시글이 없습니다. 첫 번째 게시글을 작성해보세요!</p>';
