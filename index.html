@@ -124,11 +124,48 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, setLogLevel, doc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // DOM 요소 가져오기
+        const showFormButton = document.getElementById('show-form-button');
+        const hideFormButton = document.getElementById('hide-form-button');
+        const postFormContainer = document.getElementById('post-form-container');
+        const postForm = document.getElementById('post-form'); 
+        const postsContainer = document.getElementById('posts-container');
+        const messageArea = document.getElementById('message-area');
+        const passwordModal = document.getElementById('password-modal');
+        const modalInput = document.getElementById('modal-password-input');
+        const modalConfirmButton = document.getElementById('modal-confirm-button');
+        const modalCancelButton = document.getElementById('modal-cancel-button');
+
+        // 메시지를 표시하는 함수
+        const showMessage = (message, isError = false) => {
+            messageArea.textContent = message;
+            messageArea.className = isError ? 'text-red-500 text-center mb-4 font-semibold' : 'text-green-500 text-center mb-4 font-semibold';
+            setTimeout(() => {
+                messageArea.textContent = '';
+            }, 5000);
+        };
+        
+        // **이벤트 리스너를 initApp() 밖으로 이동**
+        // '게시글 작성하기' 버튼 클릭 이벤트
+        if (showFormButton) {
+            showFormButton.addEventListener('click', () => {
+                postFormContainer.classList.remove('hidden');
+                showFormButton.classList.add('hidden');
+                messageArea.textContent = '';
+            });
+        }
+
+        // '닫기' 버튼 클릭 이벤트
+        if (hideFormButton) {
+            hideFormButton.addEventListener('click', () => {
+                postFormContainer.classList.add('hidden');
+                showFormButton.classList.remove('hidden');
+                messageArea.textContent = '';
+            });
+        }
+        
         // 삭제 모달을 여는 함수 (전역 스코프에 정의)
         window.openDeleteModal = (postId, postPassword) => {
-            const passwordModal = document.getElementById('password-modal');
-            const modalInput = document.getElementById('modal-password-input');
-            
             window.currentPostIdToDelete = postId;
             window.currentPostPassword = postPassword;
             passwordModal.classList.remove('hidden');
@@ -154,27 +191,6 @@
             // ** 관리자 비밀번호 설정 (중요: 이 비밀번호는 실제 사용 시 변경해주세요!) **
             const ADMIN_PASSWORD = '4980';
 
-            // UI 요소
-            const showFormButton = document.getElementById('show-form-button');
-            const hideFormButton = document.getElementById('hide-form-button');
-            const postFormContainer = document.getElementById('post-form-container');
-            const postForm = document.getElementById('post-form'); 
-            const postsContainer = document.getElementById('posts-container');
-            const messageArea = document.getElementById('message-area');
-            const passwordModal = document.getElementById('password-modal');
-            const modalInput = document.getElementById('modal-password-input');
-            const modalConfirmButton = document.getElementById('modal-confirm-button');
-            const modalCancelButton = document.getElementById('modal-cancel-button');
-
-            // 메시지를 표시하는 함수
-            const showMessage = (message, isError = false) => {
-                messageArea.textContent = message;
-                messageArea.className = isError ? 'text-red-500 text-center mb-4 font-semibold' : 'text-green-500 text-center mb-4 font-semibold';
-                setTimeout(() => {
-                    messageArea.textContent = '';
-                }, 5000);
-            };
-
             // Firestore 컬렉션 경로 (공유 가능한 데이터)
             const postsCollection = collection(db, `artifacts/${appId}/public/data/posts`);
 
@@ -182,7 +198,7 @@
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
-                    setupRealtimeListener();
+                    setupRealtimeListener(db, postsCollection);
                 } else {
                     try {
                         const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -235,20 +251,6 @@
                     showMessage("게시글 작성 중 오류가 발생했습니다.", true);
                 }
             });
-            
-            // '게시글 작성하기' 버튼 클릭 이벤트
-            showFormButton.addEventListener('click', () => {
-                postFormContainer.classList.remove('hidden');
-                showFormButton.classList.add('hidden');
-                messageArea.textContent = '';
-            });
-
-            // '닫기' 버튼 클릭 이벤트
-            hideFormButton.addEventListener('click', () => {
-                postFormContainer.classList.add('hidden');
-                showFormButton.classList.remove('hidden');
-                messageArea.textContent = '';
-            });
 
             // 모달에서 비밀번호 확인 후 삭제
             modalConfirmButton.addEventListener('click', async () => {
@@ -276,7 +278,7 @@
             });
 
             // 실시간 데이터 리스너 설정
-            function setupRealtimeListener() {
+            function setupRealtimeListener(db, postsCollection) {
                 const q = query(postsCollection);
 
                 onSnapshot(q, (snapshot) => {
