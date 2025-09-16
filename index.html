@@ -145,7 +145,6 @@
             }, 5000);
         };
         
-        // **이벤트 리스너를 initApp() 밖으로 이동**
         // '게시글 작성하기' 버튼 클릭 이벤트
         if (showFormButton) {
             showFormButton.addEventListener('click', () => {
@@ -176,6 +175,7 @@
         document.addEventListener('DOMContentLoaded', initApp);
 
         function initApp() {
+            console.log("앱 초기화 중...");
             // Firebase 설정 및 초기화
             const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
             const app = initializeApp(firebaseConfig);
@@ -193,9 +193,10 @@
 
             // Firestore 컬렉션 경로 (공유 가능한 데이터)
             const postsCollection = collection(db, `artifacts/${appId}/public/data/posts`);
-
+            
             // 인증 상태 변경 감지
             onAuthStateChanged(auth, async (user) => {
+                console.log("인증 상태 변경 감지:", user ? "인증됨" : "인증되지 않음");
                 if (user) {
                     userId = user.uid;
                     setupRealtimeListener(db, postsCollection);
@@ -204,8 +205,10 @@
                         const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                         if (token) {
                             await signInWithCustomToken(auth, token);
+                            console.log("커스텀 토큰으로 로그인 성공");
                         } else {
                             await signInAnonymously(auth);
+                            console.log("익명 로그인 성공");
                         }
                     } catch (error) {
                         console.error("인증 실패:", error);
@@ -279,9 +282,11 @@
 
             // 실시간 데이터 리스너 설정
             function setupRealtimeListener(db, postsCollection) {
+                console.log("실시간 데이터 리스너 설정 중...");
                 const q = query(postsCollection);
 
                 onSnapshot(q, (snapshot) => {
+                    console.log("Firestore 스냅샷 수신, 문서 개수:", snapshot.size);
                     postsContainer.innerHTML = '';
                     if (snapshot.empty) {
                         postsContainer.innerHTML = '<p class="text-center text-gray-500 text-lg">아직 게시글이 없습니다. 첫 번째 게시글을 작성해보세요!</p>';
@@ -333,6 +338,7 @@
                     });
                 }, (error) => {
                     console.error("실시간 데이터 읽기 오류:", error);
+                    postsContainer.innerHTML = '<p class="text-red-500 text-center text-lg">게시글을 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>';
                 });
             }
         }
