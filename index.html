@@ -178,6 +178,7 @@
             console.log("앱 초기화 중...");
             
             // Firebase 환경 변수를 사용해 설정 객체 생성
+            // 이 앱은 실행 환경에서 Firebase 설정을 제공하므로, 하드코딩 대신 제공된 변수를 사용합니다.
             const firebaseConfig = typeof __firebase_config !== 'undefined' 
                 ? JSON.parse(__firebase_config)
                 : null;
@@ -202,7 +203,6 @@
                 if (user) {
                     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                     
-                    // ✅ 이 부분이 수정되었습니다. 이제 모든 사용자가 접근할 수 있는 공개 경로를 사용합니다.
                     const postsCollection = collection(db, `artifacts/${appId}/public/data/posts`);
 
                     // 게시글 작성 폼 제출 처리
@@ -250,7 +250,6 @@
                         const ADMIN_PASSWORD = '4980';
                         if (inputPassword === window.currentPostPassword || inputPassword === ADMIN_PASSWORD) {
                             try {
-                                // ✅ 이 부분이 수정되었습니다. 이제 공개 경로에서 게시글을 삭제합니다.
                                 await deleteDoc(doc(db, `artifacts/${appId}/public/data/posts`, window.currentPostIdToDelete));
                                 showMessage("게시글이 성공적으로 삭제되었습니다.");
                                 modalInput.value = '';
